@@ -81,7 +81,7 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: |
           mvn sonar:sonar \
-            -Dsonar.projectKey=Direwait_3.OrderService-Inno \
+            -Dsonar.projectKey=Direwait_3.Order-Service-Inno \
             -Dsonar.organization=direwait \
             -Dsonar.host.url=$SONAR_HOST_URL \
             -Dsonar.login=$SONAR_TOKEN \
