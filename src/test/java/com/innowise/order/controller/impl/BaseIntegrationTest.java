@@ -19,12 +19,23 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 @WireMockTest
 public abstract class BaseIntegrationTest {
 
-    @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15")
             .withDatabaseName("testdb")
             .withUsername("test")
             .withPassword("test")
             .withReuse(false);
+
+    static {
+        postgres.start();
+        while (!postgres.isRunning()) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+    }
 
     @RegisterExtension
     static WireMockExtension wireMock = WireMockExtension.newInstance()
