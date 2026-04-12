@@ -37,10 +37,6 @@ public abstract class BaseIntegrationTest {
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
 
-        registry.add("spring.datasource.hikari.maxLifetime", () -> "60000");
-        registry.add("spring.datasource.hikari.idleTimeout", () -> "30000");
-        registry.add("spring.datasource.hikari.validationTimeout", () -> "5000");
-
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
         registry.add("spring.jpa.database-platform", () -> "org.hibernate.dialect.PostgreSQLDialect");
 
