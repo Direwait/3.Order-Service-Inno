@@ -2,19 +2,21 @@ package com.innowise.order.dao.repository.specification;
 
 import com.innowise.order.dao.enums.Status;
 import com.innowise.order.dao.model.OrderModel;
+import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class OrderSpecification {
 
     public static Specification<OrderModel> filterByDateRangeAndStatus(
             LocalDate startDate,
             LocalDate endDate,
-            Status status) {
+            List<Status> statuses) {
 
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -29,8 +31,12 @@ public class OrderSpecification {
                 predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), endDate.atTime(23, 59, 59)));
             }
 
-            if (status != null) {
-                predicates.add(cb.equal(root.get("status"), status));
+            if (statuses != null && !statuses.isEmpty()) {
+                CriteriaBuilder.In<Status> inClause = cb.in(root.get("status"));
+                for (Status status : statuses) {
+                    inClause.value(status);
+                }
+                predicates.add(inClause);
             }
 
             predicates.add(cb.isFalse(root.get("deleted")));

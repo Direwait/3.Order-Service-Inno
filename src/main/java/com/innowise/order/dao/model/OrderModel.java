@@ -4,6 +4,8 @@ import com.innowise.order.dao.auditing.Auditable;
 import com.innowise.order.dao.enums.Status;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -15,6 +17,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
+@SQLDelete(sql = "UPDATE orders SET deleted = true WHERE id = ?")
+@SQLRestriction("deleted = false")
 @Table(name = "orders")
 public class OrderModel extends Auditable {
 

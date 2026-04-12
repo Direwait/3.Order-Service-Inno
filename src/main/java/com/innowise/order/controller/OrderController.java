@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public interface OrderController {
@@ -32,14 +33,14 @@ public interface OrderController {
      *
      * @param startDate filter orders created after this date (optional)
      * @param endDate   filter orders created before this date (optional)
-     * @param status    filter orders by status (CREATED, CANCELED, etc.) (optional)
+     * @param statuses    filter orders by list of statuses (CREATED, CANCELED, etc.) (optional)
      * @param pageable  pagination parameters (page, size, sort)
      * @return a page of orders with user details, HTTP 200 status
      */
     ResponseEntity<Page<OrderWithUserResponse>> getOrdersWithDateRangeAndStatuses(
             LocalDate startDate,
             LocalDate endDate,
-            String status,
+            List<String> statuses,
             Pageable pageable
     );
 
@@ -59,7 +60,7 @@ public interface OrderController {
      * @param orderId the order UUID
      * @return true if order was deleted, false if restored, HTTP 200 status
      */
-    ResponseEntity<Boolean> deleteById(UUID orderId);
+    ResponseEntity<Boolean> softDeleteByOrderId(UUID orderId);
 
     /**
      * Performs hard delete of an order.
@@ -68,7 +69,7 @@ public interface OrderController {
      * @param orderId the order UUID
      * @return HTTP 204 status (No Content)
      */
-    ResponseEntity<Void> updateByOrderId(UUID orderId);
+    ResponseEntity<Void> deleteByOrderId(UUID orderId);
 
     /**
      * Updates an existing order by its ID.

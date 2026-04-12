@@ -2,6 +2,8 @@ package com.innowise.order.service.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.innowise.order.dao.enums.Status;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
@@ -23,12 +25,18 @@ public class OrderDto {
     @NotNull(message = "User ID cannot be null")
     private UUID userId;
 
+    @NotNull(message = "User Email cannot be null")
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    private String userEmail;
+
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Status status;
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private BigDecimal totalPrice;
 
+    @NotEmpty(message = "Order must contain at least one item")
+    @Valid
     private List<OrderItemDto> items;
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)

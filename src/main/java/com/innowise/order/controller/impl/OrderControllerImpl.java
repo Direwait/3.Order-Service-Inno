@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -42,12 +43,12 @@ public class OrderControllerImpl implements OrderController {
     public ResponseEntity<Page<OrderWithUserResponse>> getOrdersWithDateRangeAndStatuses(
             @RequestParam(required = false) LocalDate startDate,
             @RequestParam(required = false) LocalDate endDate,
-            @RequestParam(required = false) String status,
+            @RequestParam(required = false) List<String> statuses,
             @PageableDefault(size = 20) Pageable pageable
     ) {
         var ordersWithDateRangeAndStatuses = orderService.getOrdersWithDateRangeAndStatuses(
                 startDate, endDate,
-                status, pageable
+                statuses, pageable
         );
         return ResponseEntity.ok(ordersWithDateRangeAndStatuses);
     }
@@ -63,14 +64,14 @@ public class OrderControllerImpl implements OrderController {
 
     @PatchMapping("/{orderId}")
     @Override
-    public ResponseEntity<Boolean> deleteById(@PathVariable UUID orderId) {
+    public ResponseEntity<Boolean> softDeleteByOrderId(@PathVariable UUID orderId) {
         var isDeleted = orderService.sofDeleteByOrderId(orderId);
         return ResponseEntity.ok(isDeleted);
     }
 
     @DeleteMapping("/{orderId}")
     @Override
-    public ResponseEntity<Void> updateByOrderId(@PathVariable UUID orderId) {
+    public ResponseEntity<Void> deleteByOrderId(@PathVariable UUID orderId) {
         orderService.deleteByOrderId(orderId);
         return ResponseEntity.noContent().build();
     }
@@ -79,7 +80,7 @@ public class OrderControllerImpl implements OrderController {
     @Override
     public ResponseEntity<OrderWithUserResponse> updateByOrderId(
             @PathVariable UUID orderId,
-            @RequestBody OrderDto orderDto
+            @Valid @RequestBody OrderDto orderDto
     ) {
         var orderWithUserResponse = orderService.updateByOrderId(orderId, orderDto);
         return ResponseEntity.ok(orderWithUserResponse);

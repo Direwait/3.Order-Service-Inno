@@ -1,5 +1,6 @@
 package com.innowise.order.controller.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.innowise.order.dao.model.ItemModel;
 import com.innowise.order.dao.repository.ItemRepository;
@@ -10,10 +11,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
@@ -100,18 +102,17 @@ class OrderControllerImplTest extends BaseIntegrationTest {
         stubUserSuccess(testUserId);
         UUID orderId = createTestOrder(testUserId, testItemId, 1);
 
-        OrderDto updateDto = OrderDto.builder()
-                .userId(testUserId)
-                .items(List.of(OrderItemDto.builder()
-                        .itemId(testItemId)
-                        .quantity(5)
-                        .build()))
-                .build();
+        Map<String, Object> updateRequest = new HashMap<>();
+        updateRequest.put("userId", testUserId.toString());
+        updateRequest.put("userEmail", "test@mail.com");
+        updateRequest.put("items", List.of(
+                Map.of("itemId", testItemId.toString(), "quantity", 5)
+        ));
 
         webTestClient.put()
                 .uri("/orders/{orderId}", orderId)
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(updateDto)
+                .bodyValue(updateRequest)
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -146,48 +147,6 @@ class OrderControllerImplTest extends BaseIntegrationTest {
                 .expectStatus().isNotFound();
     }
 
-    private UUID createTestOrder(UUID userId, UUID itemId, int quantity) {
-        stubUserSuccess(userId);
-
-        OrderDto orderDto = OrderDto.builder()
-                .userId(userId)
-                .items(List.of(OrderItemDto.builder()
-                        .itemId(itemId)
-                        .quantity(quantity)
-                        .build()))
-                .build();
-
-        String response = webTestClient.post()
-                .uri("/orders")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(orderDto)
-                .exchange()
-                .expectStatus().isCreated()
-                .returnResult(String.class)
-                .getResponseBody()
-                .blockFirst();
-
-        try {
-            return UUID.fromString(objectMapper.readTree(response).get("orderDto").get("id").asText());
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private void stubUserSuccess(UUID userId) {
-        WireMock.stubFor(get("/users/" + userId)
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody(String.format("""
-                                {
-                                    "id": "%s",
-                                    "name": "John",
-                                    "surname": "Doe",
-                                    "active": true
-                                }
-                                """, userId))));
-    }
     @Test
     void createOrder_WithMultipleItems_ShouldCalculateTotalPriceCorrectly() {
         stubUserSuccess(testUserId);
@@ -198,12 +157,32 @@ class OrderControllerImplTest extends BaseIntegrationTest {
                 .build();
         UUID item2Id = itemRepository.save(item2).getId();
 
+        Map<String, Object> request = new HashMap<>();
+        request.put("userId", testUserId.toString());
+        request.put("userEmail", "test@mail.com");
+        request.put("items", List.of(
+                Map.of("itemId", testItemId.toString(), "quantity", 2),
+                Map.of("itemId", item2Id.toString(), "quantity", 3)
+        ));
+
+        webTestClient.post()
+                .uri("/orders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody()
+                .jsonPath("$.orderDto.totalPrice").isEqualTo(349.98);
+    }
+
+    @Test
+    void createOrder_WithEmptyItems_ShouldReturnBadRequest() {
+        stubUserSuccess(testUserId);
+
         OrderDto orderDto = OrderDto.builder()
                 .userId(testUserId)
-                .items(List.of(
-                        OrderItemDto.builder().itemId(testItemId).quantity(2).build(),
-                        OrderItemDto.builder().itemId(item2Id).quantity(3).build()
-                ))
+                .userEmail("test@mail.com")
+                .items(List.of())
                 .build();
 
         webTestClient.post()
@@ -211,19 +190,19 @@ class OrderControllerImplTest extends BaseIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(orderDto)
                 .exchange()
-                .expectStatus().isCreated()
+                .expectStatus().isBadRequest()
                 .expectBody()
-                .jsonPath("$.orderDto.totalPrice").isEqualTo(349.98);
+                .jsonPath("$.errors.items").exists();
     }
 
-
     @Test
-    void updateOrder_WithEmptyItems_ShouldSetTotalPriceToZero() {
+    void updateOrder_WithEmptyItems_ShouldReturnBadRequest() {
         stubUserSuccess(testUserId);
         UUID orderId = createTestOrder(testUserId, testItemId, 1);
 
         OrderDto updateDto = OrderDto.builder()
                 .userId(testUserId)
+                .userEmail("test@mail.com")
                 .items(List.of())
                 .build();
 
@@ -232,8 +211,124 @@ class OrderControllerImplTest extends BaseIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(updateDto)
                 .exchange()
-                .expectStatus().isOk()
+                .expectStatus().isBadRequest()
                 .expectBody()
-                .jsonPath("$.orderDto.totalPrice").isEqualTo(0);
+                .jsonPath("$.errors.items").exists();
+    }
+
+    @Test
+    void createOrder_WithoutUserEmail_ShouldReturnBadRequest() {
+        stubUserSuccess(testUserId);
+
+        OrderDto orderDto = OrderDto.builder()
+                .userId(testUserId)
+                .items(List.of(OrderItemDto.builder()
+                        .itemId(testItemId)
+                        .quantity(1)
+                        .build()))
+                .build();
+
+        webTestClient.post()
+                .uri("/orders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(orderDto)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.errors.userEmail").exists();
+    }
+
+    @Test
+    void createOrder_WithNonExistentItem_ShouldReturnBadRequest() {
+        stubUserSuccess(testUserId);
+
+        OrderDto orderDto = OrderDto.builder()
+                .userId(testUserId)
+                .userEmail("test@mail.com")
+                .items(List.of(OrderItemDto.builder()
+                        .itemId(UUID.randomUUID())
+                        .quantity(1)
+                        .build()))
+                .build();
+
+        webTestClient.post()
+                .uri("/orders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(orderDto)
+                .exchange()
+                .expectStatus().isBadRequest();
+    }
+
+    private UUID createTestOrder(UUID userId, UUID itemId, int quantity) {
+        stubUserSuccess(userId);
+
+        Map<String, Object> request = new HashMap<>();
+        request.put("userId", userId.toString());
+        request.put("userEmail", "test@mail.com");
+        request.put("items", List.of(
+                Map.of(
+                        "itemId", itemId.toString(),
+                        "quantity", quantity
+                )
+        ));
+
+        String response = webTestClient.post()
+                .uri("/orders")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .exchange()
+                .expectStatus().isCreated()
+                .returnResult(String.class)
+                .getResponseBody()
+                .blockFirst();
+
+        try {
+            return UUID.fromString(objectMapper.readTree(response).get("orderDto").get("id").asText());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse order ID from response: " + response, e);
+        }
+    }
+
+    private void stubUserSuccess(UUID userId) {
+        WireMock.stubFor(get(urlEqualTo("/users/" + userId))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(String.format("""
+                                {
+                                    "id": "%s",
+                                    "name": "John",
+                                    "surname": "Doe",
+                                    "email": "test@mail.com",
+                                    "active": true
+                                }
+                                """, userId))));
+        WireMock.stubFor(get(urlPathEqualTo("/users/by-email"))
+                .withQueryParam("email", equalTo("test@mail.com"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(String.format("""
+                            {
+                                "id": "%s",
+                                "name": "John",
+                                "surname": "Doe",
+                                "email": "test@mail.com",
+                                "active": true
+                            }
+                            """, userId))));
+        WireMock.stubFor(get(urlPathEqualTo("/users/batch"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(String.format("""
+                            [{
+                                "id": "%s",
+                                "name": "John",
+                                "surname": "Doe",
+                                "email": "test@mail.com",
+                                "active": true
+                            }]
+                            """, userId))));
     }
 }

@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public interface OrderService {
@@ -18,7 +19,7 @@ public interface OrderService {
     Page<OrderWithUserResponse> getOrdersWithDateRangeAndStatuses(
             LocalDate startDate,
             LocalDate endDate,
-            String status,
+            List<String> statuses,
             Pageable pageable
     );
 

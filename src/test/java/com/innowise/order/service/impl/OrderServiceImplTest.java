@@ -72,12 +72,14 @@ class OrderServiceImplTest {
 
         testOrderDto = OrderDto.builder()
                 .userId(testUserId)
+                .userEmail("test@email.com")
                 .build();
 
         testUserDto = UserDto.builder()
                 .id(testUserId)
                 .name("Test User")
                 .surname("Test Surname")
+                .email("test@email.com")
                 .active(true)
                 .build();
     }
@@ -87,7 +89,7 @@ class OrderServiceImplTest {
     void createOrder_ShouldCreateOrderSuccessfully() {
         when(orderMapper.dtoToModel(testOrderDto)).thenReturn(testOrderModel);
         when(orderRepository.save(any(OrderModel.class))).thenReturn(testOrderModel);
-        when(userServiceFeignWrapper.getUserWithCircuitBreaker(testUserId)).thenReturn(testUserDto);
+        when(userServiceFeignWrapper.getUserWithCircuitBreakerByEmail("test@email.com")).thenReturn(testUserDto);
         when(orderMapper.modelToDto(testOrderModel)).thenReturn(testOrderDto);
 
         OrderWithUserResponse response = orderService.createOrder(testOrderDto);
@@ -99,17 +101,19 @@ class OrderServiceImplTest {
 
         verify(orderMapper).dtoToModel(testOrderDto);
         verify(orderRepository).save(testOrderModel);
-        verify(userServiceFeignWrapper).getUserWithCircuitBreaker(testUserId);
+        verify(userServiceFeignWrapper).getUserWithCircuitBreakerByEmail("test@email.com");
     }
 
     @Test
     void createOrder_ShouldCalculateTotalPrice() {
         BigDecimal expectedTotal = BigDecimal.valueOf(150.00);
+        testOrderDto.setUserEmail("test@email.com");
+
         when(orderMapper.dtoToModel(testOrderDto)).thenReturn(testOrderModel);
         when(orderTotalPriceCalculator.calculateTotalPrice(testOrderModel.getItems()))
                 .thenReturn(expectedTotal);
         when(orderRepository.save(any(OrderModel.class))).thenReturn(testOrderModel);
-        when(userServiceFeignWrapper.getUserWithCircuitBreaker(testUserId)).thenReturn(testUserDto);
+        when(userServiceFeignWrapper.getUserWithCircuitBreakerByEmail("test@email.com")).thenReturn(testUserDto);
         when(orderMapper.modelToDto(testOrderModel)).thenReturn(testOrderDto);
 
         orderService.createOrder(testOrderDto);
@@ -179,32 +183,38 @@ class OrderServiceImplTest {
     void getOrdersWithDateRangeAndStatuses_ShouldReturnFilteredOrders() {
         LocalDate startDate = LocalDate.of(2024, 1, 1);
         LocalDate endDate = LocalDate.of(2024, 12, 31);
-        String status = "CREATED";
+        List<String> statuses = List.of("CREATED", "PENDING");
         Pageable pageable = Pageable.ofSize(10);
         Page<OrderModel> orderPage = new PageImpl<>(List.of(testOrderModel));
 
+        List<UUID> userIds = List.of(testUserId);
+        List<UserDto> userDtos = List.of(testUserDto);
+
         when(orderRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(orderPage);
-        when(userServiceFeignWrapper.getUserWithCircuitBreaker(testUserId)).thenReturn(testUserDto);
+        when(userServiceFeignWrapper.getUsersByIds(userIds)).thenReturn(userDtos);
         when(orderMapper.modelToDto(testOrderModel)).thenReturn(testOrderDto);
 
         Page<OrderWithUserResponse> response = orderService.getOrdersWithDateRangeAndStatuses(
-                startDate, endDate, status, pageable);
+                startDate, endDate, statuses, pageable);
 
         assertThat(response).isNotNull();
         assertThat(response.getContent()).hasSize(1);
         assertThat(response.getContent().get(0).getOrderDto()).isEqualTo(testOrderDto);
 
         verify(orderRepository).findAll(any(Specification.class), eq(pageable));
+        verify(userServiceFeignWrapper).getUsersByIds(userIds);
     }
 
     @Test
     void getOrdersWithDateRangeAndStatuses_ShouldIgnoreInvalidStatus() {
-        String invalidStatus = "INVALID_STATUS";
+        List<String> invalidStatus = List.of("INVALID_STATUS");
         Pageable pageable = Pageable.ofSize(10);
         Page<OrderModel> orderPage = new PageImpl<>(List.of(testOrderModel));
+        List<UUID> userIds = List.of(testUserId);
+        List<UserDto> userDtos = List.of(testUserDto);
 
         when(orderRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(orderPage);
-        when(userServiceFeignWrapper.getUserWithCircuitBreaker(testUserId)).thenReturn(testUserDto);
+        when(userServiceFeignWrapper.getUsersByIds(userIds)).thenReturn(userDtos);
         when(orderMapper.modelToDto(testOrderModel)).thenReturn(testOrderDto);
 
         Page<OrderWithUserResponse> response = orderService.getOrdersWithDateRangeAndStatuses(
@@ -212,15 +222,18 @@ class OrderServiceImplTest {
 
         assertThat(response).isNotNull();
         verify(orderRepository).findAll(any(Specification.class), eq(pageable));
+        verify(userServiceFeignWrapper).getUsersByIds(userIds);
     }
 
     @Test
     void getOrdersWithDateRangeAndStatuses_ShouldHandleNullStatus() {
         Pageable pageable = Pageable.ofSize(10);
         Page<OrderModel> orderPage = new PageImpl<>(List.of(testOrderModel));
+        List<UUID> userIds = List.of(testUserId);
+        List<UserDto> userDtos = List.of(testUserDto);
 
         when(orderRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(orderPage);
-        when(userServiceFeignWrapper.getUserWithCircuitBreaker(testUserId)).thenReturn(testUserDto);
+        when(userServiceFeignWrapper.getUsersByIds(userIds)).thenReturn(userDtos);
         when(orderMapper.modelToDto(testOrderModel)).thenReturn(testOrderDto);
 
         Page<OrderWithUserResponse> response = orderService.getOrdersWithDateRangeAndStatuses(
@@ -228,6 +241,7 @@ class OrderServiceImplTest {
 
         assertThat(response).isNotNull();
         verify(orderRepository).findAll(any(Specification.class), eq(pageable));
+        verify(userServiceFeignWrapper).getUsersByIds(userIds);
     }
 
     @Test
@@ -323,11 +337,11 @@ class OrderServiceImplTest {
     }
 
     @Test
-    void findOrderById_ShouldReturnOrderWhenExists() throws Exception {
+    void findOrderById_ShouldReturnOrderWhenExistsOrder() throws Exception {
         when(orderRepository.findById(testOrderId)).thenReturn(Optional.of(testOrderModel));
 
         java.lang.reflect.Method method = OrderServiceImpl.class.getDeclaredMethod(
-                "findOrderById", UUID.class);
+                "findOrderByOrderId", UUID.class);
         method.setAccessible(true);
         OrderModel result = (OrderModel) method.invoke(orderService, testOrderId);
 
@@ -336,11 +350,11 @@ class OrderServiceImplTest {
     }
 
     @Test
-    void findOrderById_ShouldThrowExceptionWhenNotFound() throws Exception {
+    void findOrderByOrderId_ShouldThrowExceptionWhenNotFound() throws Exception {
         when(orderRepository.findById(testOrderId)).thenReturn(Optional.empty());
 
         java.lang.reflect.Method method = OrderServiceImpl.class.getDeclaredMethod(
-                "findOrderById", UUID.class);
+                "findOrderByOrderId", UUID.class);
         method.setAccessible(true);
 
         assertThatThrownBy(() -> method.invoke(orderService, testOrderId))

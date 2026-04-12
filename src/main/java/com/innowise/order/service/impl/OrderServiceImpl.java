@@ -22,7 +22,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -42,7 +47,7 @@ public class OrderServiceImpl implements OrderService {
 
         prepareOrderForSave(orderModel);
         OrderModel savedOrder = orderRepository.save(orderModel);
-        UserDto userDto = userServiceFeignWrapper.getUserWithCircuitBreaker(savedOrder.getUserId());
+        UserDto userDto = userServiceFeignWrapper.getUserWithCircuitBreakerByEmail(orderDto.getUserEmail());
 
         return OrderWithUserResponse.builder()
                 .orderDto(orderMapper.modelToDto(savedOrder))
@@ -50,9 +55,10 @@ public class OrderServiceImpl implements OrderService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
     @Override
     public OrderWithUserResponse getOrderByOrderId(UUID orderId) {
-        OrderModel orderModel = findOrderById(orderId);
+        OrderModel orderModel = findOrderByOrderId(orderId);
         UserDto userDto = userServiceFeignWrapper.getUserWithCircuitBreaker(orderModel.getUserId());
 
         return OrderWithUserResponse.builder()
@@ -64,7 +70,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderWithUserResponse updateByOrderId(UUID orderId, OrderDto orderDto) {
-        OrderModel orderModel = findOrderById(orderId);
+        OrderModel orderModel = findOrderByOrderId(orderId);
         orderMapper.updateFromDto(orderDto, orderModel);
         prepareOrderForSave(orderModel);
 
@@ -78,33 +84,54 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<OrderWithUserResponse> getOrdersWithDateRangeAndStatuses(
             LocalDate startDate,
             LocalDate endDate,
-            String status,
+            List<String> statuses,
             Pageable pageable
     ) {
-        Status statusEnum = null;
-        if (status != null && !status.isBlank()) {
-            try {
-                statusEnum = Status.valueOf(status.toUpperCase().trim());
-            } catch (IllegalArgumentException e) {
-                log.warn("Invalid status value: {}, ignoring filter", status);
+
+        List<Status> statusEnums = null;
+        if (statuses != null && !statuses.isEmpty()) {
+            statusEnums = new ArrayList<>();
+            for (String status : statuses) {
+                if (status != null && !status.isBlank()) {
+                    try {
+                        statusEnums.add(Status.valueOf(status.toUpperCase().trim()));
+                    } catch (IllegalArgumentException e) {
+                        log.warn("Invalid status value: {}, ignoring", status);
+                    }
+                }
+            }
+            if (statusEnums.isEmpty()) {
+                statusEnums = null;
             }
         }
         Specification<OrderModel> spec = OrderSpecification.filterByDateRangeAndStatus(
-                startDate, endDate, statusEnum
+                startDate, endDate, statusEnums
         );
-        return orderRepository.findAll(spec, pageable)
-                .map(order -> {
-                    UserDto userDto = userServiceFeignWrapper.getUserWithCircuitBreaker(order.getUserId());
-                    return OrderWithUserResponse.builder()
-                            .orderDto(orderMapper.modelToDto(order))
-                            .userDto(userDto)
-                            .build();
-                });
+
+        Page<OrderModel> orderPage = orderRepository.findAll(spec, pageable);
+
+        List<UUID> userIds = orderPage.getContent().stream()
+                .map(OrderModel::getUserId)
+                .distinct()
+                .toList();
+
+        Map<UUID, UserDto> userMap = userServiceFeignWrapper.getUsersByIds(userIds).stream()
+                .collect(Collectors.toMap(UserDto::getId, Function.identity()));
+
+        return orderPage.map(order -> {
+            UserDto userDto = userMap.get(order.getUserId());
+            return OrderWithUserResponse.builder()
+                    .orderDto(orderMapper.modelToDto(order))
+                    .userDto(userDto)
+                    .build();
+        });
     }
 
+    @Transactional(readOnly = true)
     @Override
     public Page<OrderWithUserResponse> getOrdersByUserId(UUID userId, Pageable pageable) {
         UserDto userDto = userServiceFeignWrapper.getUserWithCircuitBreaker(userId);
@@ -129,7 +156,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public boolean sofDeleteByOrderId(UUID orderId) {
-        OrderModel order = findOrderById(orderId);
+        OrderModel order = findOrderByOrderId(orderId);
 
         if (order.isDeleted()) {
             order.setDeleted(false);
@@ -147,7 +174,7 @@ public class OrderServiceImpl implements OrderService {
         orderModel.setTotalPrice(totalPrice);
     }
 
-    private OrderModel findOrderById(UUID orderId) {
+    private OrderModel findOrderByOrderId(UUID orderId) {
         return orderRepository.findById(orderId)
                 .orElseThrow(() -> new EntityNotFoundException(
                         String.format("Order not found with id: %s", orderId)
