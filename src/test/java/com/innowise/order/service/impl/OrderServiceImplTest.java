@@ -286,41 +286,6 @@ class OrderServiceImplTest {
     }
 
     @Test
-    void sofDeleteByOrderId_ShouldMarkOrderAsDeleted() {
-        testOrderModel.setDeleted(false);
-        when(orderRepository.findById(testOrderId)).thenReturn(Optional.of(testOrderModel));
-
-        boolean result = orderService.sofDeleteByOrderId(testOrderId);
-
-        assertThat(result).isTrue();
-        assertThat(testOrderModel.isDeleted()).isTrue();
-        verify(orderRepository).findById(testOrderId);
-    }
-
-    @Test
-    void sofDeleteByOrderId_ShouldRestoreOrderWhenAlreadyDeleted() {
-        testOrderModel.setDeleted(true);
-        when(orderRepository.findById(testOrderId)).thenReturn(Optional.of(testOrderModel));
-
-        boolean result = orderService.sofDeleteByOrderId(testOrderId);
-
-        assertThat(result).isFalse();
-        assertThat(testOrderModel.isDeleted()).isFalse();
-        verify(orderRepository).findById(testOrderId);
-    }
-
-    @Test
-    void sofDeleteByOrderId_ShouldThrowExceptionWhenOrderNotFound() {
-        when(orderRepository.findById(testOrderId)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> orderService.sofDeleteByOrderId(testOrderId))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessageContaining("Order not found with id: " + testOrderId);
-
-        verify(orderRepository).findById(testOrderId);
-    }
-
-    @Test
     void prepareOrderForSave_ShouldSetOrderItemsRelationAndTotalPrice() throws InvocationTargetException, IllegalAccessException, NoSuchMethodException {
         BigDecimal calculatedPrice = BigDecimal.valueOf(200.00);
         when(orderTotalPriceCalculator.calculateTotalPrice(testOrderModel.getItems()))

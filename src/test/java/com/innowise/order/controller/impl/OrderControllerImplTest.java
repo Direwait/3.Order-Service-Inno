@@ -120,19 +120,7 @@ class OrderControllerImplTest extends BaseIntegrationTest {
     }
 
     @Test
-    void softDelete_Success() {
-        stubUserSuccess(testUserId);
-        UUID orderId = createTestOrder(testUserId, testItemId, 1);
-
-        webTestClient.patch()
-                .uri("/orders/{orderId}", orderId)
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody(Boolean.class).isEqualTo(true);
-    }
-
-    @Test
-    void hardDelete_Success() {
+    void delete_Success() {
         stubUserSuccess(testUserId);
         UUID orderId = createTestOrder(testUserId, testItemId, 1);
 

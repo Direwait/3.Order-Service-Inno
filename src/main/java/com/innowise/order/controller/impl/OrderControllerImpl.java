@@ -62,13 +62,6 @@ public class OrderControllerImpl implements OrderController {
         return ResponseEntity.ok(ordersByUserId);
     }
 
-    @PatchMapping("/{orderId}")
-    @Override
-    public ResponseEntity<Boolean> softDeleteByOrderId(@PathVariable UUID orderId) {
-        var isDeleted = orderService.sofDeleteByOrderId(orderId);
-        return ResponseEntity.ok(isDeleted);
-    }
-
     @DeleteMapping("/{orderId}")
     @Override
     public ResponseEntity<Void> deleteByOrderId(@PathVariable UUID orderId) {

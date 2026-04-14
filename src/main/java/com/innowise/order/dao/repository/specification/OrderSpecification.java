@@ -9,7 +9,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 public class OrderSpecification {
 
@@ -38,8 +37,6 @@ public class OrderSpecification {
                 }
                 predicates.add(inClause);
             }
-
-            predicates.add(cb.isFalse(root.get("deleted")));
             return cb.and(predicates.toArray(new Predicate[0]));
         };
     }

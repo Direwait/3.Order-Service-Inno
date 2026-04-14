@@ -27,5 +27,4 @@ public interface OrderService {
 
     void deleteByOrderId(UUID orderId);
 
-    boolean sofDeleteByOrderId(UUID orderId);
 }

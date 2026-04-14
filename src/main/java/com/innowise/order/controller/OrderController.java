@@ -54,15 +54,6 @@ public interface OrderController {
     ResponseEntity<Page<OrderWithUserResponse>> getOrderByUserId(UUID userId, Pageable pageable);
 
     /**
-     * Performs soft delete (or restore) of an order.
-     * Toggles the deleted flag of the order.
-     *
-     * @param orderId the order UUID
-     * @return true if order was deleted, false if restored, HTTP 200 status
-     */
-    ResponseEntity<Boolean> softDeleteByOrderId(UUID orderId);
-
-    /**
      * Performs hard delete of an order.
      * Removes the order completely from the database.
      *

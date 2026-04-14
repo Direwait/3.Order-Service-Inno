@@ -153,20 +153,6 @@ public class OrderServiceImpl implements OrderService {
         orderRepository.deleteById(orderId);
     }
 
-    @Override
-    @Transactional
-    public boolean sofDeleteByOrderId(UUID orderId) {
-        OrderModel order = findOrderByOrderId(orderId);
-
-        if (order.isDeleted()) {
-            order.setDeleted(false);
-            log.info("Order with id {} was restored", orderId);
-        } else {
-            order.setDeleted(true);
-            log.info("Order with id {} was marked as deleted", orderId);
-        }
-        return order.isDeleted();
-    }
 
     private void prepareOrderForSave(OrderModel orderModel) {
         orderMapper.setOrderItemsRelation(orderModel);
