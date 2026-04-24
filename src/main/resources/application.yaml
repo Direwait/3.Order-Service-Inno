@@ -1,5 +1,10 @@
+kafka:
+  topics:
+    payments-status: update-status
+
 server:
   port: 8081
+
 spring:
   config:
     import: optional:file:.env[.properties]
@@ -26,4 +31,8 @@ spring:
     change-log: classpath:/db/changelog/db.changelog-master.xml
     enabled: true
     drop-first: false
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
 user-service-url: ${URL_USER_SERVICE}

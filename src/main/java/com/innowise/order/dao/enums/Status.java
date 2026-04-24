@@ -4,5 +4,8 @@ public enum Status {
     CREATED,
     CANCELED,
     COMPLETED,
-    PENDING
+    PENDING,
+
+    FAILED,
+    SUCCESS
 }

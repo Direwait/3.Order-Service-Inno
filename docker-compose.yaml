@@ -21,13 +21,18 @@ services:
     container_name: orderService-inno
     ports:
       - "8081:8081"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "kafka:host-gateway"
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
       SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: host.docker.internal:9092
       SPRING_LIQUIBASE_ENABLED: "true"
       SPRING_LIQUIBASE_CHANGE_LOG: classpath:/db/changelog/db.changelog-master.xml
+      URL_USER_SERVICE: ${URL_USER_SERVICE}
     depends_on:
       - postgres
     networks:
