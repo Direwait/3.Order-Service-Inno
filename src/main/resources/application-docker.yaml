@@ -26,4 +26,8 @@ spring:
     change-log: classpath:/db/changelog/db.changelog-master.xml
     enabled: true
     drop-first: false
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+
 user-service-url: ${URL_USER_SERVICE}
