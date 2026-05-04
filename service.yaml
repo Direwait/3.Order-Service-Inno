@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service-inno
+spec:
+  selector:
+    app: order-service-inno
+  ports:
+    - port: 8080
+      targetPort: 8080
