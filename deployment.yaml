@@ -16,10 +16,12 @@ spec:
     spec:
       containers:
         - name: order-service-inno
-          image: direwait/orderservice-inno:latest
+          image: direwait/orderservise-inno:latest
           ports:
             - containerPort: 8080
           env:
+            - name: DB_HOST
+              value: "postgres-order"
             - name: DB_NAME
               value: "orderdb"
             - name: DB_USERNAME
@@ -35,12 +37,14 @@ spec:
             httpGet:
               path: /actuator/health
               port: 8080
-            initialDelaySeconds: 30
+            initialDelaySeconds: 50
             periodSeconds: 10
+            failureThreshold: 3
 
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
               port: 8080
-            initialDelaySeconds: 20
-            periodSeconds: 5
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            failureThreshold: 3
