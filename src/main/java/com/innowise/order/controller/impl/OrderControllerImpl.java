@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -26,6 +27,7 @@ public class OrderControllerImpl implements OrderController {
 
     @PostMapping()
     @Override
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<OrderWithUserResponse> createOrder(@Valid @RequestBody OrderDto orderDto) {
         var orderWithUser = orderService.createOrder(orderDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(orderWithUser);
@@ -33,6 +35,7 @@ public class OrderControllerImpl implements OrderController {
 
     @GetMapping("/{orderId}")
     @Override
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<OrderWithUserResponse> getById(@PathVariable UUID orderId) {
         var byId = orderService.getOrderByOrderId(orderId);
         return ResponseEntity.ok(byId);
@@ -40,6 +43,7 @@ public class OrderControllerImpl implements OrderController {
 
     @GetMapping
     @Override
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Page<OrderWithUserResponse>> getOrdersWithDateRangeAndStatuses(
             @RequestParam(required = false) LocalDate startDate,
             @RequestParam(required = false) LocalDate endDate,
@@ -55,6 +59,7 @@ public class OrderControllerImpl implements OrderController {
 
     @GetMapping("/users/{userId}")
     @Override
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Page<OrderWithUserResponse>> getOrderByUserId(
             @PathVariable UUID userId,
             @PageableDefault(size = 20) Pageable pageable) {
@@ -64,6 +69,7 @@ public class OrderControllerImpl implements OrderController {
 
     @DeleteMapping("/{orderId}")
     @Override
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Void> deleteByOrderId(@PathVariable UUID orderId) {
         orderService.deleteByOrderId(orderId);
         return ResponseEntity.noContent().build();
@@ -71,6 +77,7 @@ public class OrderControllerImpl implements OrderController {
 
     @PutMapping("/{orderId}")
     @Override
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<OrderWithUserResponse> updateByOrderId(
             @PathVariable UUID orderId,
             @Valid @RequestBody OrderDto orderDto

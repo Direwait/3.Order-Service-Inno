@@ -10,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -22,6 +23,7 @@ public class ItemControllerImpl implements ItemController {
 
     @PostMapping()
     @Override
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ItemDto> createItem(@Valid @RequestBody ItemDto itemDto) {
         var item = itemService.createItem(itemDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(item);
@@ -29,6 +31,7 @@ public class ItemControllerImpl implements ItemController {
 
     @GetMapping("/{itemId}")
     @Override
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<ItemDto> getItemById(@PathVariable UUID itemId) {
         var itemById = itemService.getItemById(itemId);
         return ResponseEntity.ok(itemById);
@@ -36,6 +39,7 @@ public class ItemControllerImpl implements ItemController {
 
     @GetMapping()
     @Override
+    @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Page<ItemDto>> getAllItems(@PageableDefault(size = 10) Pageable pageable) {
         var allItems = itemService.getAllItems(pageable);
         return ResponseEntity.ok(allItems);
@@ -43,6 +47,7 @@ public class ItemControllerImpl implements ItemController {
 
     @PutMapping("/{itemId}")
     @Override
+    @PreAuthorize("hasAnyRole('ADMIN')")
     public ResponseEntity<ItemDto> updateItemById(
             @PathVariable UUID itemId,
             @Valid @RequestBody ItemDto itemDto
@@ -53,6 +58,7 @@ public class ItemControllerImpl implements ItemController {
 
     @DeleteMapping("/{itemId}")
     @Override
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteItem(@PathVariable UUID itemId) {
         itemService.deleteItemById(itemId);
         return ResponseEntity.noContent().build();

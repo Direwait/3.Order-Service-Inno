@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service-inno
+  labels:
+    app: order-service-inno
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-service-inno
+  template:
+    metadata:
+      labels:
+        app: order-service-inno
+    spec:
+      containers:
+        - name: order-service-inno
+          image: direwait/orderservise-inno:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_HOST
+              value: "postgres-order"
+            - name: DB_NAME
+              value: "orderdb"
+            - name: DB_USERNAME
+              value: "postgres"
+            - name: DB_PASSWORD
+              value: "postgres"
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka:9092"
+            - name: URL_USER_SERVICE
+              value: "http://user-service-inno:8080"
+
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 50
+            periodSeconds: 10
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            failureThreshold: 3

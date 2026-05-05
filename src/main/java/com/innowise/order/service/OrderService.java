@@ -2,6 +2,7 @@ package com.innowise.order.service;
 
 import com.innowise.order.service.dto.OrderDto;
 import com.innowise.order.service.dto.OrderWithUserResponse;
+import com.innowise.order.service.dto.action.ActionPaymentInfo;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -27,4 +28,5 @@ public interface OrderService {
 
     void deleteByOrderId(UUID orderId);
 
+    void updateOrderStatusFromPaymentTopic(ActionPaymentInfo actionPaymentInfo);
 }

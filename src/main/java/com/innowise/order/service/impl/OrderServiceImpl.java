@@ -7,8 +7,10 @@ import com.innowise.order.dao.repository.specification.OrderSpecification;
 import com.innowise.order.service.OrderService;
 import com.innowise.order.service.dto.OrderDto;
 import com.innowise.order.service.dto.OrderWithUserResponse;
+import com.innowise.order.service.dto.action.ActionPaymentInfo;
 import com.innowise.order.service.dto.feignClient.UserDto;
 import com.innowise.order.service.impl.feignWraper.UserServiceFeignWrapper;
+import com.innowise.order.service.impl.paymentCheckalidator.PaymentCheckValidator;
 import com.innowise.order.service.impl.totalPriceCalculator.OrderTotalPriceCalculator;
 import com.innowise.order.service.mapper.OrderMapper;
 import jakarta.persistence.EntityNotFoundException;
@@ -17,15 +19,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -38,6 +38,8 @@ public class OrderServiceImpl implements OrderService {
     private final OrderMapper orderMapper;
     private final OrderTotalPriceCalculator orderTotalPriceCalculator;
     private final UserServiceFeignWrapper userServiceFeignWrapper;
+
+    private final PaymentCheckValidator paymentCheckValidator;
 
     @Transactional
     @Override
@@ -151,6 +153,23 @@ public class OrderServiceImpl implements OrderService {
             throw new EntityNotFoundException("Order not found with orderId " + orderId);
         }
         orderRepository.deleteById(orderId);
+    }
+
+    @KafkaListener(topics = "${kafka.topics.payments-status}")
+    @Override
+    @Transactional
+    public void updateOrderStatusFromPaymentTopic(ActionPaymentInfo actionPaymentInfo) {
+        UUID orderId = UUID.fromString(actionPaymentInfo.orderId());
+
+        OrderModel orderByOrderId = findOrderByOrderId(orderId);
+        if (orderByOrderId.getStatus().equals(Status.SUCCESS))
+            return;
+
+        Status chekedStatus = actionPaymentInfo.status();
+        if(chekedStatus.equals(Status.SUCCESS)) {
+            chekedStatus = paymentCheckValidator.resolveStatus(actionPaymentInfo, orderByOrderId);
+        }
+        orderByOrderId.setStatus(chekedStatus);
     }
 
 
